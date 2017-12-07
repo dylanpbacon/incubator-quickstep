@@ -90,4 +90,8 @@ DEFINE_bool(preload_buffer_pool, false,
             "accepting queries (should also set --buffer_pool_slots to be "
             "large enough to accomodate the entire database).");
 
+DEFINE_bool(display_relation_size, true,
+            "If true, output the number of rows returned by a query when "
+            "printing the results back to the user.");
+
 }  // namespace quickstep

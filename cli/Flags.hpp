@@ -47,6 +47,8 @@ DECLARE_bool(preload_buffer_pool);
 
 DECLARE_bool(display_timing);
 
+DECLARE_bool(display_relation_size);
+
 /** @} */
 
 }  // namespace quickstep

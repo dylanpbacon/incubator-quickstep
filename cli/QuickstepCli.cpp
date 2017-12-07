@@ -391,11 +391,12 @@ int main(int argc, char* argv[]) {
             PrintToScreen::PrintRelation(*query_result_relation,
                                          &storage_manager,
                                          io_handle->out());
-            PrintToScreen::PrintOutputSize(
+            if (quickstep::FLAGS_display_relation_size) {
+              PrintToScreen::PrintOutputSize(
                 *query_result_relation,
                 &storage_manager,
-                io_handle->err());
-
+                io_handle->err()); 
+            }
             DropRelation::Drop(*query_result_relation,
                                query_processor->getDefaultDatabase(),
                                &storage_manager);

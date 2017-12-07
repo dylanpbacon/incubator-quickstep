@@ -54,6 +54,10 @@ DEFINE_bool(printing_enabled, true,
             "If true, print query results to screen normally. If false, skip "
             "printing output (e.g. for benchmarking).");
 
+DEFINE_bool(use_csv_format, false,
+            "If true, print query results in csv format. If false, use "
+            "table format.");
+
 int PrintToScreen::GetNumberOfDigits(int number) {
   if (number > 0) {
     return static_cast<int>(log10 (number)) + 1;
@@ -69,6 +73,53 @@ void PrintToScreen::PrintRelation(const CatalogRelation &relation,
                                   FILE *out) {
   if (!FLAGS_printing_enabled) {
     return;
+  }
+
+  if(FLAGS_use_csv_format) {
+    /*
+    bool notFirstLoop=false;
+      for (CatalogRelation::const_iterator attr_it = relation.begin();
+               attr_it != relation.end();
+               ++attr_it) {
+
+        if(notFirstLoop) {
+          fputc(',',out);
+        }else{
+          notFirstLoop=true;
+        }
+
+        fputc('"',out);
+        std::string attr=attr_it->getDisplayName();
+        for(int i=0; i<attr.size();i++)
+        {
+          fputc(attr[i],out);
+          if(attr[i]=='"')
+          {
+            fputc('"',out);
+          }
+        }
+        fputc('"',out);
+      }
+      fputc('\n', out);*/
+      
+
+      std::vector<block_id> blocks = relation.getBlocksSnapshot();
+        for (const block_id current_block_id : blocks) {
+          BlockReference block = storage_manager->getBlock(current_block_id, relation);
+          const TupleStorageSubBlock &tuple_store = block->getTupleStorageSubBlock();
+
+          if (tuple_store.isPacked()) {
+            for (tuple_id tid = 0; tid <= tuple_store.getMaxTupleID(); ++tid) {
+              printCSVTuple(tuple_store, tid, out);
+            }
+          } else {
+            std::unique_ptr<TupleIdSequence> existence_map(tuple_store.getExistenceMap());
+            for (tuple_id tid : *existence_map) {
+              printCSVTuple(tuple_store, tid, out);
+            }
+          }
+        }
+        return;
   }
 
   vector<int> column_widths;
@@ -162,6 +213,46 @@ void PrintToScreen::printTuple(const TupleStorageSubBlock &tuple_store,
     }
 
     fputc('|', out);
+  }
+  fputc('\n', out);
+}
+
+void PrintToScreen::printCSVTuple(const TupleStorageSubBlock &tuple_store,
+                               const tuple_id tid,
+                               FILE *out) {
+  DEBUG_ASSERT(tuple_store.hasTupleWithID(tid));
+
+  const CatalogRelationSchema &relation = tuple_store.getRelation();
+  CatalogRelation::const_iterator attr_it = relation.begin();
+  bool notFirstLoop=false;
+  for (; attr_it != relation.end(); ++attr_it) {
+    TypedValue value(tuple_store.getAttributeValueTyped(tid, attr_it->getID()));
+    if(notFirstLoop) {
+      //fputc(',',out);
+    }else{
+      notFirstLoop=true;
+    }
+
+  if(attr_it != relation.begin()) {  
+    fputc('|',out);
+  }
+  std::string attr="NULL";
+  if(!value.isNull()) {
+    attr=attr_it->getType().printValueToString(value);
+  }
+
+  for(int i=0; i<attr.size();i++)
+  {
+    fputc(attr[i],out);
+    if(attr[i]=='|')
+    {
+      fputc(' ',out);
+    }
+  }
+
+  //fputc('|',out);
+  
+
   }
   fputc('\n', out);
 }

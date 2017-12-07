@@ -89,6 +89,10 @@ class PrintToScreen {
                          const std::vector<int> &column_widths,
                          FILE *out);
 
+  static void printCSVTuple(const TupleStorageSubBlock &tuple_store,
+                         const tuple_id tid,
+                         FILE *out);
+
   DISALLOW_COPY_AND_ASSIGN(PrintToScreen);
 };
 
