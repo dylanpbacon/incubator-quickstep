@@ -22,10 +22,12 @@
 
 #include <chrono>
 #include <cstddef>
+#include <list>
 #include <memory>
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "storage/StorageBlockInfo.hpp"
@@ -211,6 +213,27 @@ class LRUKEvictionPolicyFactory {
  private:
   DISALLOW_COPY_AND_ASSIGN(LRUKEvictionPolicyFactory);
 };
+
+class CAREvictionPolicy {
+ public:
+  CAREvictionPolicy() { p = 0; }
+  ~CAREvictionPolicy() override { }
+  Status chooseBlockToEvict(block_id* block) override;
+  void blockCreated(const block_id block) override;
+  void blockEvicted(const block_id block) override;
+  void blockReferenced(const block_id block) override;
+  void blockUnreferenced(const block_id block) override;
+  unsigned int getRefCount(const block_id block) override;
+
+ private:
+  std::list<std::pair<block_id, bool>> t1;
+  std::list<std::pair<block_id, bool>> t2;
+  std::list<block_id> b1;
+  std::list<block_id> b2; 
+  int p;
+
+  DISALLOW_COPY_AND_ASSIGN(CAREvictionPolicy);
+}
 
 }  // namespace quickstep
 

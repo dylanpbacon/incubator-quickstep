@@ -496,4 +496,97 @@ EvictionPolicy* LRUKEvictionPolicyFactory::ConstructLRUKEvictionPolicy(
   }
 }
 
+EvictionPolicy::Status CAREvictionPolicy::chooseBlockToEvict(block_id* block) {
+  bool found = 0;
+  while (found != 1) {
+    if (t1.size() >= std::max(1, p)) {
+      if (t1.front().second == 0) {
+        found = 1;
+        b1.push_front(t1.front().first);
+        t1.pop_front();
+      }
+      else {
+        t1.front().second = 0;
+        t2.push_back(t1.front());
+        t1.pop_front();
+      }
+    }
+    else {
+      if (t2.front().second == 0) {
+        found = 1;
+        b2.push_front(t2.front().first);
+        t2.pop_front();
+      }
+      else {
+        t2.front().second = 0;
+        t2.push_back(t2.front());
+        t2.pop_front();
+      }
+    }
+  }
+}
+
+void CAREvictionPolicy::blockCreated(const block_id block) {
+  bool b1Found = (std::find(b1.begin(), b1.end(), block) != b1.end());
+  bool b2Found = (std::find(b2.begin(), b2.end(), block) != b2.end());
+  if (!b1Found && !b2Found) {
+    t1.push_back(std::make_pair(block, 0));
+  }
+  else if (b1Found) {
+    p = p + std::max(1, b2.size() / b1.size());
+    t2.push_back(std::make_pair(block, 0));
+  }
+  else {
+    p = std::max(p - std::max(1, b1.size() / b2.size()), 0);
+    t2.push_back(std::make_pair(block, 0));
+  }
+}
+
+void CAREvictionPolicy::blockEvicted(const block_id block) {
+  std::list<std::pair<block_id, bool>>::iterator t1_iter = 
+    std::find_if(t1.begin(), t1.end(), [](const std::pair<block_id, bool>& element)
+                 {return element.first == block});
+  std::list<std::pair<block_id, bool>>::iterator t2_iter = 
+    std::find_if(t2.begin(), t2.end(), [](const std::pair<block_id, bool>& element)
+                 {return element.first == block});
+  if (t1_iter != t1.end()) {
+    b1.push_front(t1_iter*.first);
+    t1.erase(t1_iter);
+  }
+  else if (t2_iter != t2.end()){
+    b2.push_front(t2_iter*.first);
+    t2.erase(t2_iter);
+  }
+}
+
+void CAREvictionPolicy::blockReferenced(const block_id block) {
+  std::list<std::pair<block_id, bool>>::iterator t1_iter = 
+    std::find_if(t1.begin(), t1.end(), [](const std::pair<block_id, bool>& element)
+                 {return element.first == block});
+  std::list<std::pair<block_id, bool>>::iterator t2_iter = 
+    std::find_if(t2.begin(), t2.end(), [](const std::pair<block_id, bool>& element)
+                 {return element.first == block});
+  if (t1_iter != t1.end()) {
+    t1_iter*.second = 1;
+  }
+  else if (t2_iter != t2.end()) {
+    t2_iter*.second = 1;
+  }
+}
+
+void CAREvictionPolicy::blockUnreferenced(const block_id block) {
+  std::list<std::pair<block_id, bool>>::iterator t1_iter = 
+    std::find_if(t1.begin(), t1.end(), [](const std::pair<block_id, bool>& element)
+                 {return element.first == block});
+  std::list<std::pair<block_id, bool>>::iterator t2_iter = 
+    std::find_if(t2.begin(), t2.end(), [](const std::pair<block_id, bool>& element)
+                 {return element.first == block});
+  if (t1_iter != t1.end()) {
+    t1_iter*.second = 0;
+  }
+  else if(t2_iter != t2.end()) {
+    t2_iter*.second = 0;
+  }
+}
+
 }  // namespace quickstep
